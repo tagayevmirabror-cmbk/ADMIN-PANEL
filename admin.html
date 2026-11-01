@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="uz"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex"><title>Admin panel</title>
+<style>
+:root{--bg:#f4f5fa;--c:#fff;--tx:#1a1c2e;--mu:#667;--br:#e2e5f0;--ac:#6d4aff;--ok:#16a34a;--no:#e11d48}
+@media (prefers-color-scheme:dark){:root{--bg:#0d0f1f;--c:#1a1d2e;--tx:#eceefc;--mu:#9a9fc0;--br:#2b2f3d;--ac:#8b7bff;--ok:#4ade80;--no:#fb7185}}
+*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,sans-serif}
+main{max-width:980px;margin:0 auto;padding:16px}h1{font-size:22px}
+.c{background:var(--c);border:1px solid var(--br);border-radius:14px;padding:14px;margin-bottom:14px;overflow-x:auto}
+input,select,button{font:inherit;padding:9px 12px;border-radius:10px;border:1px solid var(--br);background:var(--bg);color:var(--tx)}
+button{background:var(--ac);color:#fff;border:0;cursor:pointer;font-weight:600}
+.g{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}.s b{display:block;font-size:24px}.mu{color:var(--mu);font-size:13px}
+table{width:100%;border-collapse:collapse;font-size:14px}td,th{padding:8px 6px;border-bottom:1px solid var(--br);text-align:left;white-space:nowrap}
+.tag{padding:2px 8px;border-radius:8px;background:var(--br);font-size:12px}.hide{display:none}.e{color:var(--no)}
+</style></head><body><main>
+<h1>🛠 Admin panel</h1>
+<div id="lg" class="c"><input id="pw" type="password" placeholder="Admin parol" onkeydown="if(event.key=='Enter')go()"> <button onclick="go()">Kirish</button><div class="e" id="er"></div></div>
+<div id="ap" class="hide">
+  <div class="g" id="st"></div><br>
+  <div class="c"><b>Qo‘lda tarif berish</b><br><br><input id="gn" placeholder="nik"> <select id="gp"><option value="pro">Pro</option><option value="max">Pro Max</option><option value="full">Mukammal</option></select> <input id="gd" type="number" value="30" style="width:80px"> kun <button onclick="grant()">Berish</button> <button style="background:var(--no)" onclick="revoke()">Bekor qilish</button><div class="mu" id="gm"></div></div>
+  <div class="c"><b>So‘nggi to‘lovlar</b><table id="pt"></table></div>
+  <div class="c"><b>Foydalanuvchilar</b> <button onclick="load()" style="float:right">⟳ Yangilash</button><table id="ut"></table></div>
+</div>
+<script>
+var PW="",N={pro:"Pro",max:"Pro Max",full:"Mukammal"};
+function $(i){return document.getElementById(i)}
+function esc(s){return String(s==null?"":s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function f(n){return Math.round(n).toLocaleString("ru-RU")}
+function d(t){return t?new Date(t).toLocaleString("ru-RU",{dateStyle:"short",timeStyle:"short"}):"—"}
+async function api(b){b.pw=PW;var r=await fetch("/api/admin",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(b)});var j=await r.json().catch(function(){return{error:"Xatolik"}});return j}
+async function go(){PW=$("pw").value;await load(true)}
+async function load(first){var j=await api({action:"stats"});if(!j.ok){if(first)$("er").textContent=j.error||"Xatolik";return}
+  $("lg").classList.add("hide");$("ap").classList.remove("hide");var s=j.stats;
+  $("st").innerHTML=[["Foydalanuvchilar",s.users],["Faol obunalar",s.active],["To‘lovlar soni",s.payCount],["Daromad (so‘m)",f(s.revenue)],["Oxirgi 24 soat",f(s.revenue24)]].map(function(x){return '<div class="c s"><span class="mu">'+x[0]+'</span><b>'+x[1]+'</b></div>'}).join("");
+  $("pt").innerHTML='<tr><th>Vaqt</th><th>Nik</th><th>Tarif</th><th>Summa</th><th>Chek / izoh</th></tr>'+(j.payments.map(function(p){return '<tr><td>'+d(p.t)+'</td><td>'+esc(p.nik)+'</td><td>'+esc(N[p.plan]||p.plan)+'</td><td>'+f(p.amount)+'</td><td>'+esc(p.key)+'</td></tr>'}).join("")||'<tr><td class="mu">Hali to‘lov yo‘q</td></tr>');
+  $("ut").innerHTML='<tr><th>Nik</th><th>Telefon</th><th>Ro‘yxatdan o‘tgan</th><th>Tarif</th><th>Tugaydi</th></tr>'+(j.users.map(function(u){return '<tr><td>'+esc(u.nik)+'</td><td>'+esc(u.ph)+'</td><td>'+d(u.created)+'</td><td>'+(u.plan?'<span class="tag">'+esc(N[u.plan])+'</span>':'—')+'</td><td>'+(u.plan?d(u.until):'—')+'</td></tr>'}).join("")||'<tr><td class="mu">Hali foydalanuvchi yo‘q</td></tr>')}
+async function grant(){var j=await api({action:"grant",nik:$("gn").value.trim(),plan:$("gp").value,days:$("gd").value});$("gm").textContent=j.ok?"Berildi ✅":(j.error||"Xatolik");if(j.ok)load()}
+async function revoke(){if(!confirm("Tarif bekor qilinsinmi?"))return;var j=await api({action:"revoke",nik:$("gn").value.trim()});$("gm").textContent=j.ok?"Bekor qilindi":(j.error||"Xatolik");if(j.ok)load()}
+</script></main></body></html>
